@@ -325,7 +325,7 @@ defmodule WebSockex.Conn do
       active: false,
       packet: 0
     ]
-    |> Keyword.merge(ssl_options)
+    |> combine_options(ssl_options)
   end
 
   defp ssl_connection_options(%{insecure: true}) do
@@ -345,5 +345,16 @@ defmodule WebSockex.Conn do
       verify: :verify_peer,
       cacerts: cacerts
     ]
+  end
+
+  # This is necessary because some of the options that can be passed to
+  # :ssl.connect/4 are not tuples, and therefore don't fit in a Keyword list. A
+  # prime example of this is `:inet` or `:inet6`.
+  defp combine_options(base_list, overrides) do
+    {bare_atom_elements_from_base_list, remaining_base_list} = Enum.split_with(base_list, &is_atom/1)
+    {bare_atom_elements_from_overrides, remaining_overrides} = Enum.split_with(overrides, &is_atom/1)
+    resulting_bare_atoms = Enum.uniq(bare_atom_elements_from_base_list ++ bare_atom_elements_from_overrides)
+    resulting_keywords = Keyword.merge(remaining_base_list, remaining_overrides)
+    resulting_bare_atoms ++ resulting_keywords
   end
 end
